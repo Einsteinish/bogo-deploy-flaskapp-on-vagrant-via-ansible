@@ -1,0 +1,115 @@
+- name: Configure application
+  hosts: all
+  become: true
+  become_method: sudo
+  vars:
+      repository_url: https://github.com/picatcha/bogo_devops_challenge.git
+      repository_path: /webapps/bogo
+
+  tasks:
+    - name: Install packages
+      apt: 
+        update_cache=yes 
+        name={{ item }} 
+        state=present
+      with_items:
+        - git
+        - python-pip
+        - nginx
+        - gunicorn
+
+    - name: install flask
+      pip: name=flask
+
+    - name: install redis
+      pip: name=redis
+
+    - name: Clone repository
+      git: 
+        repo='{{ repository_url }}' 
+        dest='{{ repository_path }}'
+
+    - name: Copy Upstart configuration
+      template: 
+        src=bogo.upstart.j2 
+        dest=/etc/init/bogo.conf
+
+    - name: Make sure our server is running
+      service: 
+        name=bogo 
+        state=started
+
+    - name: Create a log directory
+      file:
+        path: /var/log/bogo
+        state: directory
+        mode: 0755
+
+    - name: Make sure flask log file exists
+      file: 
+        path: /var/log/bogo/app.log
+        state: touch
+        mode: 0644
+
+    - name: Remove any default sites
+      file: 
+        path=/etc/nginx/sites-enabled/default 
+        state=absent
+
+    - name: Copy nginx confire template
+      template: 
+        src=bogo.nginx.j2 
+        dest=/etc/nginx/sites-available/bogo
+
+    - name: Create symlink to bogo
+      file: 
+        src=/etc/nginx/sites-available/bogo 
+        dest=/etc/nginx/sites-enabled/bogo state=link
+      notify:
+        - restart nginx
+
+    - name: Make sure nginx is running
+      service: 
+        name=nginx 
+        state=started
+
+    - name: Copy logrotate from daily to hourly
+      copy: 
+        src=/etc/cron.daily/logrotate 
+        dest=/etc/cron.hourly/
+
+    - name: Copy logrotate for bogo's app.log
+      template: 
+        src=bogo.logrotation.j2 
+        dest=/etc/logrotate.d/bogo
+
+    - name: Set locale
+      command: 
+        /usr/sbin/update-locale LANG=en_US.UTF-8 LC_ALL=en_US.UTF-8
+
+    - name: Set /etc/localtime
+      file: 
+        src=/usr/share/zoneinfo/US/Eastern 
+        dest=/etc/localtime 
+        state=link 
+        force=yes
+
+    - name: Update Timezone to America/New_York
+      copy: 
+        content="America/New_York\n" 
+        dest=/etc/timezone 
+        owner=root 
+        group=root 
+        mode=0644
+      register: timezone
+      notify: update tzdata
+
+  handlers:
+    - name: restart nginx
+      service: 
+        name=nginx 
+        state=restarted
+      
+    - name: update timezone
+      command: dpkg-reconfigure --frontend noninteractive tzdata
+      when: timezone.changed

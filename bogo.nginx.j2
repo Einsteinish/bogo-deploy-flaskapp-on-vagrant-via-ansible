@@ -1,0 +1,10 @@
+server {
+    listen 80;
+ 
+    server_name devops.bogo.com;
+
+    location / {
+        include proxy_params;
+        proxy_pass http://unix:/tmp/bogo.sock;
+    }
+}
