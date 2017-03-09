@@ -3,7 +3,7 @@
   become: true
   become_method: sudo
   vars:
-      repository_url: https://github.com/picatcha/bogo_devops_challenge.git
+      repository_url: https://github.com/Einsteinish/bogo_random_text_redis
       repository_path: /webapps/bogo
 
   tasks:
@@ -21,8 +21,13 @@
     - name: install flask
       pip: name=flask
 
-    - name: install redis
-      pip: name=redis
+    - name: Ensure Redis is present
+      apt: pkg=redis-server state=latest
+      sudo: true
+
+    - name: Ensure Redis is started
+      service: name=redis-server state=started enabled=yes
+      sudo: true
 
     - name: Clone repository
       git: 
@@ -56,7 +61,7 @@
         path=/etc/nginx/sites-enabled/default 
         state=absent
 
-    - name: Copy nginx confire template
+    - name: Copy nginx configure template
       template: 
         src=bogo.nginx.j2 
         dest=/etc/nginx/sites-available/bogo
