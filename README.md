@@ -1,6 +1,6 @@
 ## deploy-flaskapp-on-vagrant-via-ansible
 
-Ansible deploys Flask app on a Vagrant VM. 
+Ansible deploys [Flask app](https://github.com/Einsteinish/bogo_random_text_redis) on a Vagrant VM. 
 Ansible is used as a provisioner to install and configure the VM. 
 Just typing "vagrant up", the app will be running and reachable on 
 http port 80 at http://192.168.33.15 and http://devops.bogo.com.
